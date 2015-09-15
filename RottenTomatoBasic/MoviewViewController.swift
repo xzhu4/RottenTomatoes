@@ -15,16 +15,47 @@ class MoviewViewController: UIViewController, UITableViewDataSource, UITableView
     
     @IBOutlet weak var naviTitle: UINavigationItem!
     
+    @IBOutlet weak var errorLabel: UILabel!
+    
+    var refreshControl: UIRefreshControl!
+
     
     var cached_strs = ["https://gist.githubusercontent.com/timothy1ee/d1778ca5b944ed974db0/raw/489d812c7ceeec0ac15ab77bf7c47849f2d1eb2b/gistfile1.json","https://gist.githubusercontent.com/timothy1ee/e41513a57049e21bc6cf/raw/b490e79be2d21818f28614ec933d5d8f467f0a66/gistfile1.json"]
     var cache_index = 0
     
     var movies: [NSDictionary]?
+    var errorMsg: String = ""
+    
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        
         JTProgressHUD.show()
+        tableView.dataSource = self
+        tableView.delegate = self
+        _fetch_show_movies()
+        _add_refresh()
+        
+    }
+    
+    func _show_error_msg() {
+        self.errorLabel.text = " !Network Error! "
+        self.errorLabel.hidden = false
+    }
+    
+    func _add_refresh() {
+        self.refreshControl = UIRefreshControl()
+        self.refreshControl.attributedTitle = NSAttributedString(string: "Pull to refresh")
+        self.refreshControl.addTarget(self, action: "_refresh", forControlEvents: UIControlEvents.ValueChanged)
+        self.tableView.addSubview(refreshControl)
+        
+    }
+    
+    func _refresh() {
+         _fetch_show_movies()
+         self.refreshControl.endRefreshing()
+    }
+    
+    func _fetch_show_movies() {
 
         var url_str = cached_strs[cache_index]
         let url = NSURL(string: url_str)!
@@ -32,26 +63,23 @@ class MoviewViewController: UIViewController, UITableViewDataSource, UITableView
         let request = NSURLRequest(URL: url)
         
         NSURLConnection.sendAsynchronousRequest(request, queue: NSOperationQueue.mainQueue()) { (response, data, error) -> Void in
-            JTProgressHUD.hide()
             if  error != nil {
-                self.naviTitle.title = "! Network ERROR !"
+                self._show_error_msg()
                 return
                 
             } else {
-                
+                self.errorLabel.hidden = true
                 self.naviTitle.title = "Movies"
                 let json = try! NSJSONSerialization.JSONObjectWithData(data!, options:[]) as! NSDictionary
-            
+                
                 self.movies = json["movies"] as! [NSDictionary]
+                self.movies?.shuffle()
                 self.tableView.reloadData()
             }
-           
         }
-        tableView.dataSource = self
-        tableView.delegate = self
+        JTProgressHUD.hide()
+
     }
-    
-    
 
     override func didReceiveMemoryWarning() {
         super.didReceiveMemoryWarning()
@@ -119,4 +147,16 @@ class MoviewViewController: UIViewController, UITableViewDataSource, UITableView
     }
 
 
+}
+
+
+extension Array {
+    mutating func shuffle() {
+        if count < 2 { return }
+        for i in 0..<(count - 1) {
+            let j = Int(arc4random_uniform(UInt32(count - i))) + i
+            guard i != j else { continue }
+            swap(&self[i], &self[j])
+        }
+    }
 }

@@ -21,22 +21,45 @@ class MovieDetailsViewController: UIViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        JTProgressHUD.show()
-        
+      
         titleLabel.text = movie["title"] as? String
         synopsisLabel.text = movie["synopsis"] as? String
         var url = movie.valueForKeyPath("posters.thumbnail")! as! String
+        let thumbImg = NSData(contentsOfURL: NSURL(string:url)!)
         
-        var range = url.rangeOfString(".*cloudfront.net/", options: .RegularExpressionSearch)
-        if let range = range {
-            url = url.stringByReplacingCharactersInRange(range, withString: "https://content6.flixster.com/")
+        imgView.image = UIImage(data:thumbImg!)
+        
+        
+        
+        self._delay(0.1) {
+            var range = url.rangeOfString(".*cloudfront.net/", options: .RegularExpressionSearch)
+            if let range = range {
+                url = url.stringByReplacingCharactersInRange(range, withString: "https://content6.flixster.com/")
+            }
+            let betterImgReq = NSURLRequest(URL:NSURL(string:url)!, cachePolicy: NSURLRequestCachePolicy.ReturnCacheDataElseLoad, timeoutInterval: 60)
+            
+            self.imgView.setImageWithURLRequest(betterImgReq, placeholderImage: UIImage(data:thumbImg!), success: { (req, res, img) -> Void in
+                self.imgView.image = img
+                //self.imgView.alpha = 0.3
+                //UIView.animateWithDuration(1, animations: { () -> Void in self.imgView.alpha = 1})
+            }, failure: {(req, res, err) -> Void in
+                NSLog("Error loading high res poster")
+            })
+            
+            self.imgView.setImageWithURL(NSURL(string: url)!)
         }
-        
-        imgView.setImageWithURL(NSURL(string: url)!)
-        JTProgressHUD.hide()    
         // Do any additional setup after loading the view.
     }
-
+    
+    func _delay(delay:Double, closure:()->()) {
+        dispatch_after(
+            dispatch_time(
+                DISPATCH_TIME_NOW,
+                Int64(delay * Double(NSEC_PER_SEC))
+            ),
+            dispatch_get_main_queue(), closure)
+    }
+    
     override func didReceiveMemoryWarning() {
         super.didReceiveMemoryWarning()
         // Dispose of any resources that can be recreated.
